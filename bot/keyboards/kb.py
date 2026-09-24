@@ -27,11 +27,37 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="📜 История"),
             ],
             [
-                KeyboardButton(text="ℹ️ Помощь"),
+                KeyboardButton(text="ℹ️ Помощь и контакты"),
             ],
         ],
         resize_keyboard=True,
     )
+
+
+def help_info_kb(support_username: str = "V1sioneer") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="💬 Поддержка клиентов",
+                    url=f"https://t.me/{support_username.lstrip('@')}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📄 Пользовательское соглашение (Оферта)",
+                    url="https://telegra.ph/PUBLICHNAYA-OFERTA-08-12-15",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔒 Политика конфиденциальности",
+                    url="https://telegra.ph/POLITIKA-KONFIDENCIALNOSTI-08-12-99",
+                ),
+            ],
+        ]
+    )
+
 
 
 # ── Categories & Catalog ─────────────────────────────────────────────
