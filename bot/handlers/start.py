@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot.keyboards.kb import main_menu_kb
@@ -10,12 +11,13 @@ router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message) -> None:
+async def cmd_start(message: Message, state: FSMContext) -> None:
+    await state.clear()
     await message.answer(
         "👋 <b>Добро пожаловать!</b>\n\n"
         "Здесь вы можете приобрести:\n"
-        "• Подписки и ключи из каталога\n"
-        "• 💎 Telegram Premium\n"
+        "• 🤖 Подписки на нейросети (ChatGPT, Claude, Gemini, Perplexity)\n"
+        "• 🎵 Мультимедиа сервисы (Spotify, CapCut, Duolingo)\n"
         "• 🎮 Пополнение Steam и игры\n\n"
         "Выберите раздел в меню ниже 👇",
         parse_mode="HTML",
@@ -23,13 +25,19 @@ async def cmd_start(message: Message) -> None:
     )
 
 
+@router.message(Command("cancel"))
+async def cmd_cancel_command(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer("❌ Текущее действие отменено.", reply_markup=main_menu_kb())
+
+
+
 @router.message(F.text == "ℹ️ Помощь")
 async def cmd_help(message: Message) -> None:
     await message.answer(
         "<b>ℹ️ Помощь</b>\n\n"
-        "🛒 <b>Каталог</b> — цифровые товары и ключи\n"
-        "💎 <b>Telegram Premium</b> — подписка на 3, 6 или 12 месяцев\n"
-        "🎮 <b>Steam / Игры</b> — пополнение и игры\n"
+        "🛒 <b>Каталог</b> — подписки на AI и медиа-сервисы\n"
+        "🎮 <b>Steam / Игры</b> — пополнение Steam и покупка игр\n"
         "💰 <b>Мой баланс</b> — проверка и пополнение\n"
         "📜 <b>История</b> — ваши покупки\n\n"
         "По вопросам пишите администратору.",

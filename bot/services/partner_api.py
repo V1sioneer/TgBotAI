@@ -250,24 +250,6 @@ class PartnerAPIClient:
         )
         return DepositResult(**data)
 
-    # ── Telegram Premium ─────────────────────────────────────────────
-
-    async def buy_telegram(
-        self,
-        item_type: str,
-        username: str,
-        amount: int,
-    ) -> ExternalOrder:
-        data = await self._request(
-            "POST",
-            "/api/v1/telegram/buy",
-            json_body={
-                "item_type": item_type,
-                "username": username,
-                "amount": amount,
-            },
-        )
-        return ExternalOrder(**data)
 
     # ── Steam ────────────────────────────────────────────────────────
 

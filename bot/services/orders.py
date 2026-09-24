@@ -122,7 +122,7 @@ class OrderService:
         payload: dict | None = None,
     ) -> tuple[ExternalOrder, int]:
         """
-        Buy an external product (Telegram/Steam/Game).
+        Buy an external product (Steam/Game).
         api_call should be an awaitable that calls the partner API.
         Returns (ExternalOrder, local_order_id).
         """

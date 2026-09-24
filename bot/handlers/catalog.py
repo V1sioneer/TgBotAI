@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.db.models import User
 from bot.keyboards.kb import (
     catalog_page_kb,
+    categories_menu_kb,
     confirm_purchase_kb,
     product_card_kb,
 )
@@ -31,14 +32,13 @@ class BuyQtyState(StatesGroup):
     waiting_qty = State()
 
 
-# ── Catalog list ─────────────────────────────────────────────────────
+# ── Categories & Catalog list ────────────────────────────────────────
 
 
-@router.message(F.text == "🛒 Каталог")
+@router.message(F.text.in_(["🛒 Каталог", "🛒 Каталог подписок", "🛒 Каталог товаров"]))
 async def show_catalog(
     message: Message,
     api: PartnerAPIClient,
-    markup_percent: float,
 ) -> None:
     try:
         products = await api.get_products()
@@ -50,23 +50,45 @@ async def show_catalog(
         await message.answer("📭 Каталог пуст.")
         return
 
-    total_pages = math.ceil(len(products) / ITEMS_PER_PAGE)
-    page_products = products[:ITEMS_PER_PAGE]
-
+    categories = list({p.category for p in products if p.category})
     await message.answer(
-        "🛒 <b>Каталог товаров</b>",
+        "🛒 <b>Каталог товаров</b>\n\n"
+        "Выберите интересующую категорию подписки:",
         parse_mode="HTML",
-        reply_markup=catalog_page_kb(page_products, 0, total_pages, markup_percent),
+        reply_markup=categories_menu_kb(categories),
     )
 
 
-@router.callback_query(F.data.startswith("catalog_page:"))
-async def cb_catalog_page(
+@router.callback_query(F.data == "catalog_cats")
+async def cb_catalog_cats(
+    callback: CallbackQuery,
+    api: PartnerAPIClient,
+) -> None:
+    try:
+        products = await api.get_products()
+    except PartnerAPIError as exc:
+        await callback.answer(f"Ошибка: {exc.message}", show_alert=True)
+        return
+
+    categories = list({p.category for p in products if p.category})
+    await callback.message.edit_text(  # type: ignore[union-attr]
+        "🛒 <b>Каталог товаров</b>\n\n"
+        "Выберите интересующую категорию подписки:",
+        parse_mode="HTML",
+        reply_markup=categories_menu_kb(categories),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("cat:"))
+async def cb_category_page(
     callback: CallbackQuery,
     api: PartnerAPIClient,
     markup_percent: float,
 ) -> None:
-    page = int(callback.data.split(":")[1])  # type: ignore[union-attr]
+    parts = callback.data.split(":")  # type: ignore[union-attr]
+    category = parts[1]
+    page = int(parts[2]) if len(parts) > 2 else 0
 
     try:
         products = await api.get_products()
@@ -74,15 +96,25 @@ async def cb_catalog_page(
         await callback.answer(f"Ошибка: {exc.message}", show_alert=True)
         return
 
-    total_pages = max(1, math.ceil(len(products) / ITEMS_PER_PAGE))
-    page = min(page, total_pages - 1)
-    start = page * ITEMS_PER_PAGE
-    page_products = products[start : start + ITEMS_PER_PAGE]
+    if category != "all":
+        filtered = [p for p in products if p.category == category]
+    else:
+        filtered = products
 
+    if not filtered:
+        await callback.answer("В этой категории пока нет товаров.", show_alert=True)
+        return
+
+    total_pages = max(1, math.ceil(len(filtered) / ITEMS_PER_PAGE))
+    page = max(0, min(page, total_pages - 1))
+    start = page * ITEMS_PER_PAGE
+    page_products = filtered[start : start + ITEMS_PER_PAGE]
+
+    title = f"📁 <b>{category}</b>" if category != "all" else "📦 <b>Все товары</b>"
     await callback.message.edit_text(  # type: ignore[union-attr]
-        "🛒 <b>Каталог товаров</b>",
+        f"{title}\n\nВыберите товар для покупки:",
         parse_mode="HTML",
-        reply_markup=catalog_page_kb(page_products, page, total_pages, markup_percent),
+        reply_markup=catalog_page_kb(page_products, category, page, total_pages, markup_percent),
     )
     await callback.answer()
 
@@ -96,7 +128,9 @@ async def cb_product_card(
     api: PartnerAPIClient,
     markup_percent: float,
 ) -> None:
-    product_id = int(callback.data.split(":")[1])  # type: ignore[union-attr]
+    parts = callback.data.split(":")  # type: ignore[union-attr]
+    product_id = int(parts[1])
+    category = parts[2] if len(parts) > 2 else "all"
 
     try:
         product = await api.get_product(product_id)
@@ -107,9 +141,10 @@ async def cb_product_card(
     user_price = calculate_user_price(product.price, markup_percent)
     stock_text = f"✅ В наличии ({product.stock} шт.)" if product.in_stock else "❌ Нет в наличии"
 
+    cat_display = product.category or category
     text = (
         f"📦 <b>{product.name}</b>\n\n"
-        f"📁 Категория: {product.category}\n"
+        f"📁 Категория: <b>{cat_display}</b>\n"
         f"💰 Цена: <b>{format_price(user_price)}</b>\n"
         f"📊 {stock_text}\n"
     )
@@ -117,7 +152,7 @@ async def cb_product_card(
     await callback.message.edit_text(  # type: ignore[union-attr]
         text,
         parse_mode="HTML",
-        reply_markup=product_card_kb(product_id),
+        reply_markup=product_card_kb(product_id, category),
     )
     await callback.answer()
 

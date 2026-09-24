@@ -130,7 +130,7 @@ class OrderRepo:
             .where(
                 Order.status == OrderStatus.PROCESSING,
                 Order.type.in_(
-                    [OrderType.TELEGRAM, OrderType.STEAM, OrderType.GAME]
+                    [OrderType.STEAM, OrderType.GAME]
                 ),
             )
         )

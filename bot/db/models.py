@@ -25,7 +25,6 @@ class Base(DeclarativeBase):
 
 class OrderType(str, enum.Enum):
     CATALOG = "catalog"
-    TELEGRAM = "telegram"
     STEAM = "steam"
     GAME = "game"
 

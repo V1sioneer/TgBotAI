@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import structlog
-from aiogram import Router
+from aiogram import Dispatcher, Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,48 @@ def _is_admin(user_id: int, admin_ids: list[int]) -> bool:
     return user_id in admin_ids
 
 
+# ── /set_markup ──────────────────────────────────────────────────────
+
+
+@router.message(Command("set_markup"))
+async def cmd_set_markup(
+    message: Message,
+    admin_ids: list[int],
+    dispatcher: Dispatcher,
+    state: FSMContext | None = None,
+) -> None:
+    if not _is_admin(message.from_user.id, admin_ids):  # type: ignore[union-attr]
+        return
+    if state:
+        await state.clear()
+
+    args = (message.text or "").split()
+    current = dispatcher.get("markup_percent", 15.0)
+
+    if len(args) < 2:
+        await message.answer(
+            f"📊 Текущая наценка: <b>{current}%</b>\n\n"
+            f"Чтобы изменить, напишите: <code>/set_markup 25</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        new_val = float(args[1].replace("%", ""))
+        if new_val < 0 or new_val > 500:
+            await message.answer("❌ Наценка должна быть от 0% до 500%.")
+            return
+
+        dispatcher["markup_percent"] = new_val
+        await message.answer(
+            f"✅ Наценка успешно обновлена: <b>{new_val}%</b>!\n"
+            f"Цены в каталоге пересчитаны.",
+            parse_mode="HTML",
+        )
+    except ValueError:
+        await message.answer("❌ Введите число, например: <code>/set_markup 20</code>")
+
+
 # ── /partner_balance ─────────────────────────────────────────────────
 
 
@@ -27,9 +70,12 @@ async def cmd_partner_balance(
     message: Message,
     api: PartnerAPIClient,
     admin_ids: list[int],
+    state: FSMContext | None = None,
 ) -> None:
     if not _is_admin(message.from_user.id, admin_ids):  # type: ignore[union-attr]
         return
+    if state:
+        await state.clear()
 
     try:
         bal = await api.get_balance()

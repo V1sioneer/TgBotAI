@@ -23,7 +23,7 @@ async def poll_external_orders(
     interval: float = 15.0,
     max_age_minutes: float = 30.0,
 ) -> None:
-    """Background task: poll external orders (Fragment/Steam/Games) for status updates."""
+    """Background task: poll external orders (Steam/Games) for status updates."""
     logger.info("background_task_started", task="poll_external_orders")
 
     while True:

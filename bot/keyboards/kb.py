@@ -20,14 +20,13 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [
                 KeyboardButton(text="🛒 Каталог"),
-                KeyboardButton(text="💎 Telegram Premium"),
-            ],
-            [
                 KeyboardButton(text="🎮 Steam / Игры"),
-                KeyboardButton(text="💰 Мой баланс"),
             ],
             [
+                KeyboardButton(text="💰 Мой баланс"),
                 KeyboardButton(text="📜 История"),
+            ],
+            [
                 KeyboardButton(text="ℹ️ Помощь"),
             ],
         ],
@@ -35,12 +34,56 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     )
 
 
+# ── Categories & Catalog ─────────────────────────────────────────────
 
-# ── Catalog ──────────────────────────────────────────────────────────
+CATEGORY_ICONS = {
+    "chat gpt": "🤖",
+    "claude": "🧠",
+    "gemini": "✨",
+    "perplexity": "🔍",
+    "grok": "⚡",
+    "capcut": "🎬",
+    "spotify": "🎵",
+    "duolingo": "🦉",
+    "гарантией": "🛡️",
+}
+
+
+def get_category_icon(category_name: str) -> str:
+    name_lower = category_name.lower()
+    for key, icon in CATEGORY_ICONS.items():
+        if key in name_lower:
+            return icon
+    return "📁"
+
+
+def categories_menu_kb(categories: list[str]) -> InlineKeyboardMarkup:
+    """Keyboard displaying available product categories."""
+    buttons: list[list[InlineKeyboardButton]] = []
+    row: list[InlineKeyboardButton] = []
+
+    for cat in sorted(categories):
+        icon = get_category_icon(cat)
+        btn = InlineKeyboardButton(
+            text=f"{icon} {cat}",
+            callback_data=f"cat:{cat}:0",
+        )
+        row.append(btn)
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(text="📦 Все товары", callback_data="cat:all:0"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def catalog_page_kb(
     products: list[Product],
+    category: str,
     page: int,
     total_pages: int,
     markup_percent: float,
@@ -52,7 +95,7 @@ def catalog_page_kb(
         buttons.append([
             InlineKeyboardButton(
                 text=f"{stock_icon} {p.name} — {format_price(user_price)}",
-                callback_data=f"product:{p.id}",
+                callback_data=f"product:{p.id}:{category}",
             )
         ])
 
@@ -60,7 +103,7 @@ def catalog_page_kb(
     nav = []
     if page > 0:
         nav.append(
-            InlineKeyboardButton(text="⬅️", callback_data=f"catalog_page:{page - 1}")
+            InlineKeyboardButton(text="⬅️", callback_data=f"cat:{category}:{page - 1}")
         )
     nav.append(
         InlineKeyboardButton(
@@ -69,15 +112,20 @@ def catalog_page_kb(
     )
     if page < total_pages - 1:
         nav.append(
-            InlineKeyboardButton(text="➡️", callback_data=f"catalog_page:{page + 1}")
+            InlineKeyboardButton(text="➡️", callback_data=f"cat:{category}:{page + 1}")
         )
     if nav:
         buttons.append(nav)
 
+    # Back to categories
+    buttons.append([
+        InlineKeyboardButton(text="⬅️ К категориям", callback_data="catalog_cats"),
+    ])
+
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def product_card_kb(product_id: int) -> InlineKeyboardMarkup:
+def product_card_kb(product_id: int, category: str = "all") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -94,8 +142,8 @@ def product_card_kb(product_id: int) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="⬅️ Назад к каталогу",
-                    callback_data="catalog_page:0",
+                    text="⬅️ Назад",
+                    callback_data=f"cat:{category}:0",
                 ),
             ],
         ]
@@ -119,22 +167,6 @@ def confirm_purchase_kb(product_id: int, qty: int) -> InlineKeyboardMarkup:
     )
 
 
-# ── Telegram Premium ────────────────────────────────────────────────
-
-
-def premium_months_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="💎 3 мес.", callback_data="premium_months:3"),
-                InlineKeyboardButton(text="💎 6 мес.", callback_data="premium_months:6"),
-                InlineKeyboardButton(text="💎 12 мес.", callback_data="premium_months:12"),
-            ],
-            [
-                InlineKeyboardButton(text="⬅️ В главное меню", callback_data="back_main"),
-            ],
-        ]
-    )
 
 
 def confirm_external_kb(action: str, params: str) -> InlineKeyboardMarkup:

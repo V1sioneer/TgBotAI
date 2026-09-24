@@ -1,6 +1,6 @@
 # TGShopBot — Telegram-бот витрина
 
-Telegram-бот для перепродажи цифровых товаров, ИИ-подписок, Telegram Premium, пополнения Steam через Partner API магазина [thegodapishop.xyz](https://thegodapishop.xyz).
+Telegram-бот для перепродажи цифровых товаров, ИИ-подписок, пополнения Steam и игр через Partner API магазина [thegodapishop.xyz](https://thegodapishop.xyz).
 
 ## Возможности
 
