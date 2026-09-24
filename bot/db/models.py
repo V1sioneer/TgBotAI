@@ -131,13 +131,13 @@ class GameProduct(Base):
 
 
 class Deposit(Base):
-    """User balance top-up via CryptoBot / YooKassa / Stars."""
+    """User balance top-up via payment gateways."""
     __tablename__ = "deposits"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     amount_rub: Mapped[float] = mapped_column(Float)
-    method: Mapped[str] = mapped_column(String(20))  # cryptobot | yookassa | stars
+    method: Mapped[str] = mapped_column(String(20))  # cryptobot | yookassa | card | sbp
     external_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     pay_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | paid | expired

@@ -15,7 +15,7 @@ async def cmd_start(message: Message) -> None:
         "👋 <b>Добро пожаловать!</b>\n\n"
         "Здесь вы можете приобрести:\n"
         "• Подписки и ключи из каталога\n"
-        "• ⭐ Звёзды и 💎 Premium Telegram\n"
+        "• 💎 Telegram Premium\n"
         "• 🎮 Пополнение Steam и игры\n\n"
         "Выберите раздел в меню ниже 👇",
         parse_mode="HTML",
@@ -28,7 +28,7 @@ async def cmd_help(message: Message) -> None:
     await message.answer(
         "<b>ℹ️ Помощь</b>\n\n"
         "🛒 <b>Каталог</b> — цифровые товары и ключи\n"
-        "⭐ <b>Звёзды / Premium</b> — покупка через Fragment\n"
+        "💎 <b>Telegram Premium</b> — подписка на 3, 6 или 12 месяцев\n"
         "🎮 <b>Steam / Игры</b> — пополнение и игры\n"
         "💰 <b>Мой баланс</b> — проверка и пополнение\n"
         "📜 <b>История</b> — ваши покупки\n\n"

@@ -73,7 +73,7 @@ def _build_history_text(orders, page: int, total_pages: int) -> str:
         status_str = format_status(o.status)
         type_labels = {
             "catalog": "📦 Каталог",
-            "telegram": "⭐ Telegram",
+            "telegram": "💎 TG Premium",
             "steam": "🎮 Steam",
             "game": "🎮 Игра",
         }

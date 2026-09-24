@@ -10,11 +10,7 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.models import OrderType, User
-from bot.keyboards.kb import (
-    confirm_external_kb,
-    premium_months_kb,
-    telegram_type_kb,
-)
+from bot.keyboards.kb import confirm_external_kb, premium_months_kb
 from bot.services.orders import InsufficientUserBalance, OrderService
 from bot.services.partner_api import PartnerAPIClient, PartnerAPIError
 from bot.services.pricing import calculate_user_price
@@ -29,55 +25,20 @@ USERNAME_RE = re.compile(r"^@[a-zA-Z][a-zA-Z0-9_]{3,31}$")
 
 class TelegramBuyState(StatesGroup):
     waiting_username = State()
-    waiting_stars_amount = State()
 
 
 # ── Entry point ──────────────────────────────────────────────────────
 
 
-@router.message(F.text == "⭐ Звёзды / Premium")
-async def show_telegram_menu(message: Message) -> None:
-    await message.answer(
-        "Выберите тип покупки:",
-        reply_markup=telegram_type_kb(),
-    )
-
-
-# ── Type selection ───────────────────────────────────────────────────
-
-
-@router.callback_query(F.data == "tg_type:stars")
-async def cb_tg_stars(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(TelegramBuyState.waiting_username)
-    await state.update_data(item_type="stars")
-    await callback.message.edit_text(  # type: ignore[union-attr]
-        "⭐ <b>Покупка звёзд Telegram</b>\n\n"
-        "Введите username получателя (например, @durov):",
-        parse_mode="HTML",
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "tg_type:premium")
-async def cb_tg_premium(callback: CallbackQuery, state: FSMContext) -> None:
+@router.message(F.text == "💎 Telegram Premium")
+async def show_telegram_menu(message: Message, state: FSMContext) -> None:
     await state.set_state(TelegramBuyState.waiting_username)
     await state.update_data(item_type="premium")
-    await callback.message.edit_text(  # type: ignore[union-attr]
+    await message.answer(
         "💎 <b>Покупка Telegram Premium</b>\n\n"
         "Введите username получателя (например, @durov):",
         parse_mode="HTML",
     )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "tg_type_back")
-async def cb_tg_type_back(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    await callback.message.edit_text(  # type: ignore[union-attr]
-        "Выберите тип покупки:",
-        reply_markup=telegram_type_kb(),
-    )
-    await callback.answer()
 
 
 # ── Username input ───────────────────────────────────────────────────
@@ -95,53 +56,16 @@ async def process_username(message: Message, state: FSMContext) -> None:
         )
         return
 
-    data = await state.get_data()
-    item_type = data["item_type"]
+    await state.clear()
+    await message.answer(
+        f"💎 <b>Telegram Premium для {username}</b>\n\n"
+        f"Выберите срок подписки:",
+        parse_mode="HTML",
+        reply_markup=premium_months_kb(),
+    )
+    # save username in state
     await state.update_data(username=username)
 
-    if item_type == "stars":
-        await state.set_state(TelegramBuyState.waiting_stars_amount)
-        await message.answer(
-            "⭐ Введите количество звёзд (например, 100):"
-        )
-    else:
-        # Premium — choose months
-        await state.set_state(None)
-        await message.answer(
-            f"💎 Premium для {username}\n\nВыберите срок:",
-            reply_markup=premium_months_kb(),
-        )
-
-
-# ── Stars amount ─────────────────────────────────────────────────────
-
-
-@router.message(TelegramBuyState.waiting_stars_amount)
-async def process_stars_amount(
-    message: Message,
-    state: FSMContext,
-    markup_percent: float,
-) -> None:
-    text = (message.text or "").strip()
-    if not text.isdigit() or int(text) < 1:
-        await message.answer("❌ Введите целое число больше 0.")
-        return
-
-    amount = int(text)
-    data = await state.get_data()
-    username = data["username"]
-    await state.clear()
-
-    # We don't know partner price upfront for stars, estimate
-    await message.answer(
-        f"⭐ <b>Подтверждение</b>\n\n"
-        f"Получатель: {username}\n"
-        f"Количество: {amount} звёзд\n\n"
-        f"Цена будет рассчитана при оформлении.\n"
-        f"Подтвердить?",
-        parse_mode="HTML",
-        reply_markup=confirm_external_kb("stars", f"{username}:{amount}"),
-    )
 
 
 # ── Premium months ───────────────────────────────────────────────────
@@ -182,70 +106,13 @@ async def cb_confirm_external(
     admin_ids: list[int],
 ) -> None:
     parts = callback.data.split(":")  # type: ignore[union-attr]
-    action = parts[1]  # stars | premium | steam | game
+    action = parts[1]  # premium | steam | game
     params_str = ":".join(parts[2:])
 
     svc = OrderService(session, api, markup_percent)
 
     try:
-        if action == "stars":
-            username, amount_s = params_str.rsplit(":", 1)
-            amount = int(amount_s)
-            api_call = api.buy_telegram("stars", username, amount)
-            product_name = f"Звёзды x{amount} → {username}"
-            order_type = OrderType.TELEGRAM
-
-            # Execute to get price
-            try:
-                ext_result = await api_call
-            except PartnerAPIError as exc:
-                await _handle_api_error(callback, exc, db_user, admin_ids)
-                return
-
-            partner_price = ext_result.price
-            user_price = calculate_user_price(partner_price, markup_percent)
-
-            # Now do the balance check and debit
-            user = await svc.users.get(db_user.id)
-            if user is None or user.balance_rub < user_price:
-                await callback.message.edit_text(  # type: ignore[union-attr]
-                    f"❌ Недостаточно средств. Нужно {format_price(user_price)}."
-                )
-                await callback.answer()
-                return
-
-            # Debit and create order manually since API call already done
-            local_order = await svc.orders.create(
-                user_id=db_user.id,
-                order_type=order_type,
-                partner_price=partner_price,
-                user_price=user_price,
-                payload={"item_type": "stars", "username": username, "amount": amount},
-                status="processing",
-            )
-            await svc.users.update_balance(db_user.id, -user_price)
-            await svc.txns.create(
-                user_id=db_user.id,
-                delta=-user_price,
-                reason=product_name,
-                order_id=local_order.id,
-            )
-            await svc.orders.update_status(
-                local_order.id, "processing",
-                partner_order_id=ext_result.order_id,
-            )
-            await session.commit()
-
-            await callback.message.edit_text(  # type: ignore[union-attr]
-                f"🔄 <b>Заказ оформлен!</b>\n\n"
-                f"Тип: {product_name}\n"
-                f"Списано: {format_price(user_price)}\n"
-                f"Заказ #{ext_result.order_id}\n\n"
-                f"Статус: в обработке. Вы получите уведомление.",
-                parse_mode="HTML",
-            )
-
-        elif action == "premium":
+        if action == "premium":
             username, months_s = params_str.rsplit(":", 1)
             months = int(months_s)
             api_call = api.buy_telegram("premium", username, months)

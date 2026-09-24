@@ -10,9 +10,7 @@ from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    LabeledPrice,
     Message,
-    PreCheckoutQuery,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -133,20 +131,14 @@ def _payment_methods_kb(amount: int) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                text="🤖 CryptoBot (крипта)",
-                callback_data=f"pay_crypto:{amount}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="⭐ Telegram Stars",
-                callback_data=f"pay_stars:{amount}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="💳 Карта / СБП (ЮKassa)",
+                text="💳 Банковская карта / СБП",
                 callback_data=f"pay_yookassa:{amount}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="🤖 CryptoBot (криптовалюта)",
+                callback_data=f"pay_crypto:{amount}",
             ),
         ],
         [
@@ -271,105 +263,6 @@ async def cb_check_crypto(
         await callback.answer("⏳ Оплата ещё не получена. Подождите.", show_alert=True)
 
     await callback.answer()
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Telegram Stars ⭐
-# ═══════════════════════════════════════════════════════════════════════
-
-
-@router.callback_query(F.data.startswith("pay_stars:"))
-async def cb_pay_stars(
-    callback: CallbackQuery,
-    db_user: User,
-    stars_exchange_rate: float,
-) -> None:
-    amount_rub = int(callback.data.split(":")[1])  # type: ignore[union-attr]
-    stars_needed = math.ceil(amount_rub / stars_exchange_rate)
-
-    await callback.message.edit_text(  # type: ignore[union-attr]
-        f"⭐ <b>Оплата через Telegram Stars</b>\n\n"
-        f"Сумма: <b>{format_price(amount_rub)}</b>\n"
-        f"К оплате: <b>{stars_needed} ⭐</b>\n"
-        f"(курс: 1 ⭐ = {stars_exchange_rate} ₽)\n\n"
-        f"Нажмите кнопку ниже для оплаты:",
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(
-                    text=f"⭐ Оплатить {stars_needed} Stars",
-                    callback_data=f"send_stars:{amount_rub}:{stars_needed}",
-                )],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data="topup_balance")],
-            ]
-        ),
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("send_stars:"))
-async def cb_send_stars(callback: CallbackQuery) -> None:
-    parts = callback.data.split(":")  # type: ignore[union-attr]
-    amount_rub = int(parts[1])
-    stars = int(parts[2])
-
-    # Send Telegram Stars invoice
-    await callback.message.answer_invoice(  # type: ignore[union-attr]
-        title=f"Пополнение на {amount_rub} ₽",
-        description=f"Пополнение баланса бота на {amount_rub} ₽",
-        payload=f"stars:{amount_rub}",
-        currency="XTR",
-        prices=[LabeledPrice(label=f"Пополнение {amount_rub} ₽", amount=stars)],
-    )
-    await callback.answer()
-
-
-@router.pre_checkout_query()
-async def pre_checkout(pre_checkout_query: PreCheckoutQuery) -> None:
-    """Always approve Stars pre-checkout."""
-    await pre_checkout_query.answer(ok=True)
-
-
-@router.message(F.successful_payment)
-async def successful_payment(
-    message: Message,
-    session: AsyncSession,
-    db_user: User,
-) -> None:
-    """Handle successful Stars payment."""
-    payment = message.successful_payment
-    if not payment or not payment.invoice_payload.startswith("stars:"):
-        return
-
-    amount_rub = int(payment.invoice_payload.split(":")[1])
-
-    # Credit balance
-    dep_repo = DepositRepo(session)
-    await dep_repo.create(
-        user_id=db_user.id,
-        amount_rub=amount_rub,
-        method="stars",
-        external_id=payment.telegram_payment_charge_id,
-        status="paid",
-    )
-
-    user_repo = UserRepo(session)
-    new_balance = await user_repo.update_balance(db_user.id, amount_rub)
-
-    tx_repo = TransactionRepo(session)
-    await tx_repo.create(
-        user_id=db_user.id,
-        delta=amount_rub,
-        reason=f"Пополнение Stars ({payment.total_amount} ⭐)",
-    )
-    await session.commit()
-
-    await message.answer(
-        f"✅ <b>Оплата получена!</b>\n\n"
-        f"Зачислено: {format_price(amount_rub)}\n"
-        f"Баланс: {format_price(new_balance)}",
-        parse_mode="HTML",
-    )
 
 
 # ═══════════════════════════════════════════════════════════════════════

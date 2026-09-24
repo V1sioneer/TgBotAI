@@ -100,7 +100,6 @@ async def main() -> None:
     dp["session_factory"] = session_factory
     dp["steam_min_amount"] = settings.steam_min_amount
     dp["steam_max_amount"] = settings.steam_max_amount
-    dp["stars_exchange_rate"] = settings.stars_exchange_rate
 
     # ── Init payment providers ───────────────────────────────────────
     cryptobot: CryptoBotPayment | None = None

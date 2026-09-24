@@ -1,11 +1,11 @@
 # TGShopBot — Telegram-бот витрина
 
-Telegram-бот для перепродажи цифровых товаров, ИИ-подписок, Telegram Stars/Premium, пополнения Steam через Partner API магазина [thegodapishop.xyz](https://thegodapishop.xyz).
+Telegram-бот для перепродажи цифровых товаров, ИИ-подписок, Telegram Premium, пополнения Steam через Partner API магазина [thegodapishop.xyz](https://thegodapishop.xyz).
 
 ## Возможности
 
 - 🛒 **Каталог** — товары из Partner API с пагинацией
-- ⭐ **Звёзды / Premium** — покупка через Fragment
+- 💎 **Telegram Premium** — покупка подписок
 - 🎮 **Steam** — пополнение кошелька
 - 🎮 **Игры** — покупка по variation_id
 - 💰 **Баланс** — внутренний баланс пользователей
@@ -34,6 +34,9 @@ cp .env.example .env
 | `ADMIN_IDS` | Telegram ID администраторов через запятую |
 | `LOG_LEVEL` | Уровень логирования (INFO/DEBUG) |
 | `RATE_LIMIT_PER_SEC` | Лимит запросов к API/сек (по умолчанию 8) |
+| `CRYPTOBOT_TOKEN` | Токен из [@CryptoBot](https://t.me/CryptoBot) -> Crypto Pay -> Create App (опционально) |
+| `YOOKASSA_SHOP_ID` | Идентификатор магазина ЮKassa для оплаты картами/СБП (опционально) |
+| `YOOKASSA_SECRET_KEY` | Секретный ключ ЮKassa (опционально) |
 
 ### 2. Запуск через Docker
 
@@ -70,7 +73,7 @@ bot/
 ├── handlers/            # Обработчики сообщений
 │   ├── start.py         # /start, помощь, навигация
 │   ├── catalog.py       # Каталог товаров
-│   ├── external.py      # Stars/Premium (Fragment)
+│   ├── external.py      # Telegram Premium
 │   ├── order.py         # Steam/Игры
 │   ├── balance.py       # Баланс пользователя
 │   ├── history.py       # История заказов
@@ -103,7 +106,7 @@ bot/
 2. При ошибке API — автоматический возврат средств
 
 ### Внешние заказы (асинхронные)
-1. Stars/Premium/Steam/Игры → заказ уходит в `processing`
+1. Premium / Steam / Игры → заказ уходит в `processing`
 2. Фоновый polling каждые 15 сек проверяет статус
 3. `success` → уведомление пользователю
 4. `failed` → возврат на баланс + уведомление

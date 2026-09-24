@@ -27,7 +27,6 @@ class Settings(BaseSettings):
     cryptobot_token: str = ""  # from @CryptoBot -> My Apps
     yookassa_shop_id: str = ""
     yookassa_secret_key: str = ""
-    stars_exchange_rate: float = 1.6  # 1 star = X RUB
 
     @field_validator("admin_ids", mode="before")
     @classmethod

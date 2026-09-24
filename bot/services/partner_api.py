@@ -250,11 +250,11 @@ class PartnerAPIClient:
         )
         return DepositResult(**data)
 
-    # ── Telegram (Fragment) ──────────────────────────────────────────
+    # ── Telegram Premium ─────────────────────────────────────────────
 
     async def buy_telegram(
         self,
-        item_type: Literal["stars", "premium"],
+        item_type: str,
         username: str,
         amount: int,
     ) -> ExternalOrder:

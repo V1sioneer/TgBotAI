@@ -20,7 +20,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [
                 KeyboardButton(text="🛒 Каталог"),
-                KeyboardButton(text="⭐ Звёзды / Premium"),
+                KeyboardButton(text="💎 Telegram Premium"),
             ],
             [
                 KeyboardButton(text="🎮 Steam / Игры"),
@@ -33,6 +33,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
         ],
         resize_keyboard=True,
     )
+
 
 
 # ── Catalog ──────────────────────────────────────────────────────────
@@ -118,39 +119,19 @@ def confirm_purchase_kb(product_id: int, qty: int) -> InlineKeyboardMarkup:
     )
 
 
-# ── Telegram Stars / Premium ────────────────────────────────────────
-
-
-def telegram_type_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="⭐ Звёзды", callback_data="tg_type:stars"
-                ),
-                InlineKeyboardButton(
-                    text="💎 Premium", callback_data="tg_type:premium"
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="⬅️ Назад", callback_data="back_main"
-                ),
-            ],
-        ]
-    )
+# ── Telegram Premium ────────────────────────────────────────────────
 
 
 def premium_months_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="3 мес.", callback_data="premium_months:3"),
-                InlineKeyboardButton(text="6 мес.", callback_data="premium_months:6"),
-                InlineKeyboardButton(text="12 мес.", callback_data="premium_months:12"),
+                InlineKeyboardButton(text="💎 3 мес.", callback_data="premium_months:3"),
+                InlineKeyboardButton(text="💎 6 мес.", callback_data="premium_months:6"),
+                InlineKeyboardButton(text="💎 12 мес.", callback_data="premium_months:12"),
             ],
             [
-                InlineKeyboardButton(text="⬅️ Назад", callback_data="tg_type_back"),
+                InlineKeyboardButton(text="⬅️ В главное меню", callback_data="back_main"),
             ],
         ]
     )
