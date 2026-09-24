@@ -8,6 +8,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.models import (
+    Deposit,
     GameProduct,
     Order,
     OrderStatus,
@@ -261,3 +262,51 @@ class GameProductRepo:
         self.session.add(gp)
         await self.session.flush()
         return gp
+
+
+class DepositRepo:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(
+        self,
+        user_id: int,
+        amount_rub: float,
+        method: str,
+        external_id: Optional[str] = None,
+        pay_url: Optional[str] = None,
+    ) -> Deposit:
+        dep = Deposit(
+            user_id=user_id,
+            amount_rub=amount_rub,
+            method=method,
+            external_id=external_id,
+            pay_url=pay_url,
+            status="pending",
+        )
+        self.session.add(dep)
+        await self.session.flush()
+        return dep
+
+    async def get_pending_by_method(self, method: str) -> Sequence[Deposit]:
+        stmt = select(Deposit).where(
+            Deposit.status == "pending",
+            Deposit.method == method,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_by_external_id(self, external_id: str) -> Optional[Deposit]:
+        stmt = select(Deposit).where(Deposit.external_id == external_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def mark_paid(self, deposit_id: int) -> None:
+        stmt = (
+            update(Deposit)
+            .where(Deposit.id == deposit_id)
+            .values(status="paid")
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+

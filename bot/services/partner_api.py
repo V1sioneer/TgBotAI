@@ -20,7 +20,7 @@ class Product(BaseModel):
     price: float
     in_stock: bool
     stock: int
-    category: str
+    category: str = ""
 
 
 class OrderResult(BaseModel):

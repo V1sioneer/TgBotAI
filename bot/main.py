@@ -12,11 +12,17 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from bot.config import get_settings
 from bot.db.engine import close_db, get_session_factory, init_db
 from bot.handlers import admin, balance, catalog, external, history, order, start
+from bot.handlers import payment as payment_handler
 from bot.logging_config import setup_logging
 from bot.middlewares.throttling import ThrottlingMiddleware
 from bot.middlewares.user_context import UserContextMiddleware
-from bot.services.background import poll_external_orders, poll_partner_deposits
+from bot.services.background import (
+    poll_external_orders,
+    poll_partner_deposits,
+    poll_user_deposits,
+)
 from bot.services.partner_api import PartnerAPIClient, PartnerAPIError
+from bot.services.payments import CryptoBotPayment, YooKassaPayment
 
 logger = structlog.get_logger()
 
@@ -94,8 +100,25 @@ async def main() -> None:
     dp["session_factory"] = session_factory
     dp["steam_min_amount"] = settings.steam_min_amount
     dp["steam_max_amount"] = settings.steam_max_amount
+    dp["stars_exchange_rate"] = settings.stars_exchange_rate
+
+    # ── Init payment providers ───────────────────────────────────────
+    cryptobot: CryptoBotPayment | None = None
+    yookassa: YooKassaPayment | None = None
+
+    if settings.cryptobot_token:
+        cryptobot = CryptoBotPayment(settings.cryptobot_token)
+        logger.info("payment_provider_enabled", provider="CryptoBot")
+
+    if settings.yookassa_shop_id and settings.yookassa_secret_key:
+        yookassa = YooKassaPayment(settings.yookassa_shop_id, settings.yookassa_secret_key)
+        logger.info("payment_provider_enabled", provider="YooKassa")
+
+    dp["cryptobot"] = cryptobot
+    dp["yookassa"] = yookassa
 
     # ── Register routers ─────────────────────────────────────────────
+    dp.include_router(payment_handler.router)  # before start — catches pre_checkout
     dp.include_router(start.router)
     dp.include_router(catalog.router)
     dp.include_router(external.router)
@@ -131,6 +154,20 @@ async def main() -> None:
         )
     )
 
+    if cryptobot or yookassa:
+        bg_tasks.append(
+            asyncio.create_task(
+                poll_user_deposits(
+                    bot=bot,
+                    session_factory=session_factory,
+                    cryptobot=cryptobot,
+                    yookassa=yookassa,
+                    interval=25.0,
+                )
+            )
+        )
+
+
     # ── Start polling ────────────────────────────────────────────────
     logger.info("bot_started")
     try:
@@ -141,6 +178,10 @@ async def main() -> None:
             task.cancel()
         await asyncio.gather(*bg_tasks, return_exceptions=True)
         await api.close()
+        if cryptobot:
+            await cryptobot.close()
+        if yookassa:
+            await yookassa.close()
         await close_db()
         await bot.session.close()
         logger.info("bot_stopped")

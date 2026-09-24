@@ -21,7 +21,13 @@ class Settings(BaseSettings):
     rate_limit_per_sec: int = 8
     steam_min_amount: int = 100
     steam_max_amount: int = 15000
-    proxy_url: str | None = None  # e.g. socks5://127.0.0.1:1080 or http://...
+    proxy_url: str | None = None
+
+    # Payment providers
+    cryptobot_token: str = ""  # from @CryptoBot -> My Apps
+    yookassa_shop_id: str = ""
+    yookassa_secret_key: str = ""
+    stars_exchange_rate: float = 1.6  # 1 star = X RUB
 
     @field_validator("admin_ids", mode="before")
     @classmethod

@@ -7,8 +7,10 @@ from aiogram import Bot
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from bot.db.models import OrderStatus
-from bot.db.repo import OrderRepo, PartnerDepositRepo, TransactionRepo, UserRepo
+from bot.db.repo import DepositRepo, OrderRepo, PartnerDepositRepo, TransactionRepo, UserRepo
 from bot.services.partner_api import PartnerAPIClient, PartnerAPIError
+from bot.services.payments import CryptoBotPayment, YooKassaPayment
+from bot.utils.formatting import format_price
 
 logger = structlog.get_logger()
 
@@ -223,3 +225,96 @@ async def poll_partner_deposits(
         except Exception as exc:
             logger.error("poll_partner_deposits_error", error=str(exc))
             await asyncio.sleep(30)
+
+
+async def poll_user_deposits(
+    bot: Bot,
+    session_factory: async_sessionmaker[AsyncSession],
+    cryptobot: CryptoBotPayment | None,
+    yookassa: YooKassaPayment | None,
+    interval: float = 25.0,
+) -> None:
+    """Background task: auto-check pending user deposits for CryptoBot and YooKassa."""
+    if not cryptobot and not yookassa:
+        return
+
+    logger.info("background_task_started", task="poll_user_deposits")
+
+    while True:
+        try:
+            await asyncio.sleep(interval)
+
+            async with session_factory() as session:
+                dep_repo = DepositRepo(session)
+                user_repo = UserRepo(session)
+                tx_repo = TransactionRepo(session)
+
+                # 1. CryptoBot
+                if cryptobot:
+                    crypto_deps = await dep_repo.get_pending_by_method("cryptobot")
+                    for dep in crypto_deps:
+                        if not dep.external_id:
+                            continue
+                        try:
+                            invoice = await cryptobot.get_invoice(int(dep.external_id))
+                            if invoice["status"] == "paid":
+                                await dep_repo.mark_paid(dep.id)
+                                new_bal = await user_repo.update_balance(dep.user_id, dep.amount_rub)
+                                await tx_repo.create(
+                                    user_id=dep.user_id,
+                                    delta=dep.amount_rub,
+                                    reason=f"Пополнение CryptoBot #{dep.external_id}",
+                                )
+                                await session.commit()
+
+                                try:
+                                    await bot.send_message(
+                                        dep.user_id,
+                                        f"✅ <b>Оплата получена!</b>\n\n"
+                                        f"Зачислено: {format_price(dep.amount_rub)}\n"
+                                        f"Текущий баланс: {format_price(new_bal)}",
+                                        parse_mode="HTML",
+                                    )
+                                except Exception:
+                                    pass
+                        except Exception as e:
+                            logger.debug("poll_cryptobot_err", error=str(e), dep_id=dep.id)
+
+                # 2. YooKassa
+                if yookassa:
+                    yk_deps = await dep_repo.get_pending_by_method("yookassa")
+                    for dep in yk_deps:
+                        if not dep.external_id:
+                            continue
+                        try:
+                            payment = await yookassa.get_payment(dep.external_id)
+                            if payment["status"] == "succeeded":
+                                await dep_repo.mark_paid(dep.id)
+                                new_bal = await user_repo.update_balance(dep.user_id, dep.amount_rub)
+                                await tx_repo.create(
+                                    user_id=dep.user_id,
+                                    delta=dep.amount_rub,
+                                    reason=f"Пополнение ЮKassa #{dep.external_id[:8]}",
+                                )
+                                await session.commit()
+
+                                try:
+                                    await bot.send_message(
+                                        dep.user_id,
+                                        f"✅ <b>Оплата получена!</b>\n\n"
+                                        f"Зачислено: {format_price(dep.amount_rub)}\n"
+                                        f"Текущий баланс: {format_price(new_bal)}",
+                                        parse_mode="HTML",
+                                    )
+                                except Exception:
+                                    pass
+                        except Exception as e:
+                            logger.debug("poll_yookassa_err", error=str(e), dep_id=dep.id)
+
+        except asyncio.CancelledError:
+            logger.info("poll_user_deposits_cancelled")
+            break
+        except Exception as exc:
+            logger.error("poll_user_deposits_error", error=str(exc))
+            await asyncio.sleep(30)
+

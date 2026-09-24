@@ -29,13 +29,3 @@ async def show_balance(
         reply_markup=balance_kb(),
     )
 
-
-@router.callback_query(F.data == "topup_balance")
-async def cb_topup_balance(callback: CallbackQuery) -> None:
-    await callback.message.edit_text(  # type: ignore[union-attr]
-        "💳 <b>Пополнение баланса</b>\n\n"
-        "Для пополнения свяжитесь с администратором.\n"
-        "Ваш баланс будет пополнен после подтверждения оплаты.",
-        parse_mode="HTML",
-    )
-    await callback.answer()
