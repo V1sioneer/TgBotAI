@@ -27,14 +27,14 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="📜 История"),
             ],
             [
-                KeyboardButton(text="ℹ️ Помощь и контакты"),
+                KeyboardButton(text="ℹ️ Информация"),
             ],
         ],
         resize_keyboard=True,
     )
 
 
-def help_info_kb(support_username: str = "V1sioneer") -> InlineKeyboardMarkup:
+def help_info_kb(support_username: str = "V1sionHere") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [

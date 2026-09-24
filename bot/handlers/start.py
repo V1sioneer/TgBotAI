@@ -35,7 +35,7 @@ async def cmd_cancel_command(message: Message, state: FSMContext) -> None:
 from bot.keyboards.kb import help_info_kb, main_menu_kb
 
 
-@router.message(F.text.in_(["ℹ️ Помощь", "ℹ️ Помощь и контакты", "/help"]))
+@router.message(F.text.in_(["ℹ️ Информация", "ℹ️ Помощь", "ℹ️ Помощь и контакты", "/help", "/info"]))
 async def cmd_help(message: Message) -> None:
     await message.answer(
         "ℹ️ <b>Информация, поддержка и документы</b>\n\n"
@@ -45,7 +45,7 @@ async def cmd_help(message: Message) -> None:
         "📜 <b>История</b> — архив ваших покупок и сохранённых ключей\n\n"
         "По всем вопросам обращайтесь в службу поддержки. Ознакомиться с правилами сервиса и офертой вы можете по кнопкам ниже 👇",
         parse_mode="HTML",
-        reply_markup=help_info_kb(support_username="V1sioneer"),
+        reply_markup=help_info_kb(support_username="V1sionHere"),
     )
 
 

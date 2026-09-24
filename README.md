@@ -16,7 +16,7 @@ Telegram-бот для перепродажи цифровых товаров, �
 
 - 📄 **Пользовательское соглашение (Публичная оферта)**: [https://telegra.ph/PUBLICHNAYA-OFERTA-08-12-15](https://telegra.ph/PUBLICHNAYA-OFERTA-08-12-15)
 - 🔒 **Политика конфиденциальности**: [https://telegra.ph/POLITIKA-KONFIDENCIALNOSTI-08-12-99](https://telegra.ph/POLITIKA-KONFIDENCIALNOSTI-08-12-99)
-- 💬 **Служба поддержки**: [@V1sioneer](https://t.me/V1sioneer)
+- 💬 **Служба поддержки**: [@V1sionHere](https://t.me/V1sionHere)
 
 ## Быстрый старт
 
